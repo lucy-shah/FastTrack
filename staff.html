@@ -153,6 +153,15 @@
             background-color: #f7f8fa;
         }
 
+        .box.overdue {
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 2px 16px rgba(0,0,0,0.07); }
+            50% { box-shadow: 0 2px 16px rgba(231, 76, 60, 0.3); }
+        }
+
         .box h2 {
             margin-bottom: 4px;
             font-size: 16px;
@@ -168,6 +177,30 @@
             font-size: 11px;
             color: #999;
             margin-top: 2px;
+        }
+
+        .wait-time {
+            display: inline-block;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .wait-time.normal {
+            background: #e8f8f0;
+            color: #1a7f5a;
+        }
+
+        .wait-time.warning {
+            background: #fef3e2;
+            color: #e67e22;
+        }
+
+        .wait-time.critical {
+            background: #fde8e8;
+            color: #e74c3c;
         }
 
         .box .details {
@@ -266,9 +299,41 @@
             margin-top: 20px;
             display: none;
         }
+
+        /* Notification banner */
+        .notification-bar {
+            display: none;
+            background: #e74c3c;
+            color: white;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .notification-bar.visible {
+            display: flex;
+        }
+
+        .notification-bar .dismiss-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: 'DM Sans', sans-serif;
+        }
     </style>
 </head>
 <body>
+
+    <div class="notification-bar" id="notification-bar">
+        <span id="notification-text"></span>
+        <button class="dismiss-btn" onclick="dismissNotification()">Dismiss</button>
+    </div>
 
     <div class="box_top">
         <span>FastTrack — Staff Dashboard</span>
@@ -324,6 +389,13 @@
         const MAX_PATIENTS = 3;
         let currentTab = "waiting";
 
+        // Wait time thresholds in minutes
+        const WARN_MINUTES = 15;
+        const CRITICAL_MINUTES = 30;
+
+        // Track which patients we already alerted for
+        const alertedPatients = new Set();
+
         function getColor(urgency) {
             switch (urgency) {
                 case "EMERGENT":   return "#ff0000";
@@ -331,6 +403,71 @@
                 case "NON-URGENT": return "#00ff37";
                 default:           return "#888";
             }
+        }
+
+        function getWaitMinutes(submittedAt) {
+            if (!submittedAt) return 0;
+            const submitted = new Date(submittedAt);
+            const now = new Date();
+            return Math.floor((now - submitted) / 60000);
+        }
+
+        function formatWaitTime(minutes) {
+            if (minutes < 1) return "Just arrived";
+            if (minutes < 60) return `${minutes}m`;
+            const hrs = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hrs}h ${mins}m`;
+        }
+
+        function getWaitClass(minutes, urgency) {
+            if (urgency === "EMERGENT") {
+                if (minutes >= 10) return "critical";
+                if (minutes >= 5) return "warning";
+            } else if (urgency === "URGENT") {
+                if (minutes >= CRITICAL_MINUTES) return "critical";
+                if (minutes >= WARN_MINUTES) return "warning";
+            } else {
+                if (minutes >= 60) return "critical";
+                if (minutes >= 45) return "warning";
+            }
+            return "normal";
+        }
+
+        function checkOverduePatients() {
+            const cards = document.querySelectorAll("#waiting-grid .box");
+            const overdue = [];
+
+            cards.forEach(card => {
+                const id = card.dataset.patientId;
+                const minutes = parseInt(card.dataset.waitMinutes || 0);
+                const urgency = card.dataset.urgency;
+                const name = card.dataset.name;
+                const waitClass = getWaitClass(minutes, urgency);
+
+                if (waitClass === "critical" && !alertedPatients.has(id)) {
+                    alertedPatients.add(id);
+                    overdue.push(name);
+                }
+            });
+
+            if (overdue.length > 0) {
+                const bar = document.getElementById("notification-bar");
+                const text = document.getElementById("notification-text");
+                text.textContent = "⚠ Long wait: " + overdue.join(", ") + " — please attend to them";
+                bar.classList.add("visible");
+
+                if (Notification.permission === "granted") {
+                    new Notification("FastTrack — Long Wait Alert", {
+                        body: overdue.join(", ") + " have been waiting too long",
+                        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚨</text></svg>"
+                    });
+                }
+            }
+        }
+
+        function dismissNotification() {
+            document.getElementById("notification-bar").classList.remove("visible");
         }
 
         function getAvailableDoctors() {
@@ -403,10 +540,23 @@
             const color = getColor(patient.urgency);
             const name = `${patient.firstName} ${patient.lastName}`;
             const symptoms = (patient.symptoms || []).join(", ") || "None listed";
+            const waitMinutes = getWaitMinutes(patient.submittedAt);
+            const waitClass = getWaitClass(waitMinutes, patient.urgency);
 
             const card = document.createElement("div");
             card.className = "box";
+            if (status === "waiting" && waitClass === "critical") card.classList.add("overdue");
             card.style.borderLeftColor = color;
+            card.dataset.patientId = patient.patientId;
+            card.dataset.waitMinutes = waitMinutes;
+            card.dataset.urgency = patient.urgency;
+            card.dataset.name = name;
+            card.dataset.submittedAt = patient.submittedAt || "";
+
+            let waitHtml = "";
+            if (status === "waiting") {
+                waitHtml = `<div class="wait-time ${waitClass}">⏱ Waiting: ${formatWaitTime(waitMinutes)}</div>`;
+            }
 
             let detailsHtml = `
                 <strong>Patient ID:</strong> ${patient.patientId}<br>
@@ -456,16 +606,15 @@
                 <h2>${name}</h2>
                 <div class="subtitle">${patient.urgency} — Pain: ${patient.painLevel}/10</div>
                 <div class="patient-id">${patient.patientId}</div>
+                ${waitHtml}
                 <div class="details">${detailsHtml}</div>
             `;
 
-            // Toggle open/close
             card.addEventListener("click", (e) => {
                 if (e.target.tagName === "SELECT" || e.target.tagName === "BUTTON" || e.target.tagName === "OPTION") return;
                 card.classList.toggle("open");
             });
 
-            // Assign button
             if (status === "waiting") {
                 const btn = card.querySelector(".assign-btn");
                 const select = card.querySelector(".doctor-select");
@@ -489,7 +638,6 @@
                 });
             }
 
-            // Discharge button
             if (status === "in-progress") {
                 const resolveBtn = card.querySelector(".resolve-btn");
                 resolveBtn.addEventListener("click", async () => {
@@ -513,6 +661,32 @@
             return card;
         }
 
+        // Update wait times every 30 seconds without full reload
+        function updateWaitTimers() {
+            document.querySelectorAll("#waiting-grid .box").forEach(card => {
+                const submittedAt = card.dataset.submittedAt;
+                if (!submittedAt) return;
+                const minutes = getWaitMinutes(submittedAt);
+                const urgency = card.dataset.urgency;
+                const waitClass = getWaitClass(minutes, urgency);
+
+                card.dataset.waitMinutes = minutes;
+
+                const waitEl = card.querySelector(".wait-time");
+                if (waitEl) {
+                    waitEl.textContent = "⏱ Waiting: " + formatWaitTime(minutes);
+                    waitEl.className = "wait-time " + waitClass;
+                }
+
+                if (waitClass === "critical") {
+                    card.classList.add("overdue");
+                } else {
+                    card.classList.remove("overdue");
+                }
+            });
+            checkOverduePatients();
+        }
+
         async function loadPatients() {
             const loadingMsg = document.getElementById("loading-msg");
             const errorMsg = document.getElementById("error-msg");
@@ -532,7 +706,6 @@
 
                 loadingMsg.style.display = "none";
 
-                // Restore doctor counts from existing assignments
                 patients.forEach(p => {
                     if (p.status === "in-progress" && p.staffNote) {
                         const match = p.staffNote.match(/Assigned to: (.+)/);
@@ -557,6 +730,7 @@
                 updateCounts();
                 updateEmpty();
                 refreshAllDropdowns();
+                checkOverduePatients();
 
             } catch (err) {
                 loadingMsg.style.display = "none";
@@ -570,11 +744,18 @@
         document.getElementById("tab-inprogress").addEventListener("click", () => switchTab("in-progress"));
         document.getElementById("tab-discharged").addEventListener("click", () => switchTab("discharged"));
 
-        // Load patients on page load
+       
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+
         loadPatients();
 
-        // Auto-refresh every 30 seconds
+        
         setInterval(loadPatients, 30000);
+
+       
+        setInterval(updateWaitTimers, 15000);
     </script>
 
 </body>

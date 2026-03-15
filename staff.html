@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastTrack — Staff Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        .box_top {
+            width: 100%;
+            height: 50px;
+            background-color: rebeccapurple;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .refresh-btn {
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .box_sidebar {
+            width: 180px;
+            padding: 20px;
+            background: #ffffff;
+            border-right: 1px solid #dde1e9;
+        }
+
+        .box_sidebar h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-family: 'DM Serif Display', serif;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px 40px;
+        }
+
+        .main-content h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-family: 'DM Serif Display', serif;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            border: 1px solid #ccc;
+            background: #e8e8e8;
+            cursor: pointer;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .tab-btn:first-child {
+            border-radius: 6px 0 0 6px;
+        }
+
+        .tab-btn:last-child {
+            border-radius: 0 6px 6px 0;
+        }
+
+        .tab-btn.active {
+            background: rebeccapurple;
+            color: white;
+            border-color: rebeccapurple;
+        }
+
+        .tab-count {
+            background: rgba(255,255,255,0.3);
+            padding: 1px 7px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-size: 12px;
+        }
+
+        .tab-btn:not(.active) .tab-count {
+            background: rgba(0,0,0,0.1);
+        }
+
+        .cards-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .box {
+            background-color: #ffffff;
+            border-left: 5px solid #ccc;
+            padding: 20px 25px;
+            width: 520px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .box:hover {
+            background-color: #f7f8fa;
+        }
+
+        .box h2 {
+            margin-bottom: 4px;
+            font-size: 16px;
+            font-family: 'DM Serif Display', serif;
+        }
+
+        .box .subtitle {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .box .patient-id {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .box .details {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #dde1e9;
+            font-size: 13px;
+            color: #444;
+            line-height: 1.8;
+        }
+
+        .box.open .details {
+            display: block;
+        }
+
+        .reasoning {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #f3eef9;
+            border-left: 3px solid rebeccapurple;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #555;
+            font-style: italic;
+        }
+
+        .assign-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .assign-row select {
+            padding: 6px 10px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .assign-row button, .resolve-btn {
+            padding: 6px 14px;
+            background-color: rebeccapurple;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .assign-row button:hover, .resolve-btn:hover {
+            background-color: #5a2d82;
+        }
+
+        .resolve-btn {
+            background-color: #e74c3c;
+            margin-top: 10px;
+        }
+
+        .resolve-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .assigned-label {
+            margin-top: 10px;
+            font-size: 13px;
+            color: rebeccapurple;
+            font-weight: bold;
+        }
+
+        .resolved-info {
+            margin-top: 10px;
+            font-size: 13px;
+            color: rebeccapurple;
+            font-weight: bold;
+        }
+
+        .empty-msg {
+            color: #999;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .loading-msg {
+            color: #777;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        .error-msg {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="box_top">
+        <span>FastTrack — Staff Dashboard</span>
+        <button class="refresh-btn" onclick="loadPatients()">↻ Refresh</button>
+    </div>
+
+    <div class="container">
+        <div class="box_sidebar">
+            <h2>Legend</h2>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #e74c3c;"></div> Emergent
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #f1c40f;"></div> Urgent
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #2ecc71;"></div> Non-Urgent
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #888;"></div> Unknown
+            </div>
+        </div>
+
+        <div class="main-content">
+            <h1>Patient Dashboard</h1>
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-waiting">Waiting <span class="tab-count" id="waiting-count">0</span></button>
+                <button class="tab-btn" id="tab-inprogress">In Progress <span class="tab-count" id="inprogress-count">0</span></button>
+                <button class="tab-btn" id="tab-discharged">Discharged <span class="tab-count" id="discharged-count">0</span></button>
+            </div>
+            <div class="cards-grid" id="waiting-grid"></div>
+            <div class="cards-grid" id="inprogress-grid" style="display:none;"></div>
+            <div class="cards-grid" id="discharged-grid" style="display:none;"></div>
+            <div class="loading-msg" id="loading-msg">Loading patients...</div>
+            <div class="empty-msg" id="empty-msg" style="display:none;"></div>
+            <div class="error-msg" id="error-msg"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8080/api/patients";
+
+        const doctors = [
+            "Dr. Williams",
+            "Dr. Garcia",
+            "Dr. Patel",
+            "Dr. Kim",
+            "Dr. Anderson"
+        ];
+
+        const doctorCount = {};
+        doctors.forEach(d => doctorCount[d] = 0);
+        const MAX_PATIENTS = 3;
+        let currentTab = "waiting";
+
+        function getColor(urgency) {
+            switch (urgency) {
+                case "EMERGENT":   return "#ff0000";
+                case "URGENT":     return "#ffe380";
+                case "NON-URGENT": return "#00ff37";
+                default:           return "#888";
+            }
+        }
+
+        function getAvailableDoctors() {
+            return doctors.filter(d => doctorCount[d] < MAX_PATIENTS);
+        }
+
+        function refreshAllDropdowns() {
+            const available = getAvailableDoctors();
+            document.querySelectorAll(".doctor-select").forEach(select => {
+                const current = select.value;
+                select.innerHTML = '<option value="">-- Select Doctor --</option>' +
+                    available.map(d => `<option value="${d}"${d === current ? " selected" : ""}>${d} (${doctorCount[d]}/${MAX_PATIENTS})</option>`).join("");
+            });
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const grids = {
+                "waiting": document.getElementById("waiting-grid"),
+                "in-progress": document.getElementById("inprogress-grid"),
+                "discharged": document.getElementById("discharged-grid")
+            };
+            const tabs = {
+                "waiting": document.getElementById("tab-waiting"),
+                "in-progress": document.getElementById("tab-inprogress"),
+                "discharged": document.getElementById("tab-discharged")
+            };
+            Object.keys(grids).forEach(key => {
+                grids[key].style.display = key === tab ? "flex" : "none";
+                tabs[key].classList.toggle("active", key === tab);
+            });
+            updateEmpty();
+        }
+
+        function updateEmpty() {
+            const gridId = currentTab === "waiting" ? "waiting-grid" :
+                           currentTab === "in-progress" ? "inprogress-grid" : "discharged-grid";
+            const grid = document.getElementById(gridId);
+            const emptyMsg = document.getElementById("empty-msg");
+            if (grid.children.length === 0) {
+                const labels = { "waiting": "No patients waiting.", "in-progress": "No patients in progress.", "discharged": "No discharged patients." };
+                emptyMsg.textContent = labels[currentTab];
+                emptyMsg.style.display = "block";
+            } else {
+                emptyMsg.style.display = "none";
+            }
+        }
+
+        function updateCounts() {
+            document.getElementById("waiting-count").textContent = document.getElementById("waiting-grid").children.length;
+            document.getElementById("inprogress-count").textContent = document.getElementById("inprogress-grid").children.length;
+            document.getElementById("discharged-count").textContent = document.getElementById("discharged-grid").children.length;
+        }
+
+        async function updateStatus(patientId, status, note) {
+            try {
+                const body = { status };
+                if (note) body.note = note;
+                await fetch(`${API_URL}/${patientId}/status`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+            } catch (err) {
+                console.error("Failed to update status:", err);
+            }
+        }
+
+        function createCard(patient, status) {
+            const color = getColor(patient.urgency);
+            const name = `${patient.firstName} ${patient.lastName}`;
+            const symptoms = (patient.symptoms || []).join(", ") || "None listed";
+
+            const card = document.createElement("div");
+            card.className = "box";
+            card.style.borderLeftColor = color;
+
+            let detailsHtml = `
+                <strong>Patient ID:</strong> ${patient.patientId}<br>
+                <strong>Sex:</strong> ${patient.sex || "N/A"}<br>
+                <strong>DOB:</strong> ${patient.dob || "N/A"}<br>
+                <strong>Phone:</strong> ${patient.phone || "N/A"}<br>
+                <strong>Pain Level:</strong> ${patient.painLevel}/10<br>
+                <strong>Symptoms:</strong> ${symptoms}<br>
+                <strong>Conditions:</strong> ${patient.existingConditions || "None"}<br>
+                <strong>Allergies:</strong> ${patient.allergies || "None"}<br>
+                <strong>Medications:</strong> ${patient.medications || "None"}
+            `;
+
+            if (patient.isAlone) {
+                detailsHtml += `<br><strong>⚠ Arrived alone</strong> — Emergency contact: ${patient.emergencyContact || "N/A"}`;
+            }
+
+            if (patient.reasoning) {
+                detailsHtml += `<div class="reasoning">AI Triage: ${patient.reasoning}</div>`;
+            }
+
+            if (status === "waiting") {
+                const optionsHtml = getAvailableDoctors().map(d =>
+                    `<option value="${d}">${d} (${doctorCount[d]}/${MAX_PATIENTS})</option>`
+                ).join("");
+                detailsHtml += `
+                    <div class="assign-row">
+                        <select class="doctor-select">
+                            <option value="">-- Select Doctor --</option>
+                            ${optionsHtml}
+                        </select>
+                        <button class="assign-btn">Assign</button>
+                    </div>
+                `;
+            } else if (status === "in-progress") {
+                detailsHtml += `
+                    <div class="assigned-label">${patient.staffNote || "Assigned"}</div>
+                    <button class="resolve-btn">Discharge</button>
+                `;
+            } else {
+                detailsHtml += `
+                    <div class="resolved-info">Discharged${patient.staffNote ? " — " + patient.staffNote : ""}</div>
+                `;
+            }
+
+            card.innerHTML = `
+                <h2>${name}</h2>
+                <div class="subtitle">${patient.urgency} — Pain: ${patient.painLevel}/10</div>
+                <div class="patient-id">${patient.patientId}</div>
+                <div class="details">${detailsHtml}</div>
+            `;
+
+            // Toggle open/close
+            card.addEventListener("click", (e) => {
+                if (e.target.tagName === "SELECT" || e.target.tagName === "BUTTON" || e.target.tagName === "OPTION") return;
+                card.classList.toggle("open");
+            });
+
+            // Assign button
+            if (status === "waiting") {
+                const btn = card.querySelector(".assign-btn");
+                const select = card.querySelector(".doctor-select");
+
+                btn.addEventListener("click", async () => {
+                    const doctor = select.value;
+                    if (!doctor) {
+                        alert("Please select a doctor first.");
+                        return;
+                    }
+                    doctorCount[doctor]++;
+                    await updateStatus(patient.patientId, "in-progress", "Assigned to: " + doctor);
+
+                    patient.staffNote = "Assigned to: " + doctor;
+                    card.remove();
+                    document.getElementById("inprogress-grid").appendChild(createCard(patient, "in-progress"));
+
+                    updateCounts();
+                    updateEmpty();
+                    refreshAllDropdowns();
+                });
+            }
+
+            // Discharge button
+            if (status === "in-progress") {
+                const resolveBtn = card.querySelector(".resolve-btn");
+                resolveBtn.addEventListener("click", async () => {
+                    const note = patient.staffNote || "";
+                    const match = note.match(/Assigned to: (.+)/);
+                    if (match && doctorCount[match[1]] !== undefined) {
+                        doctorCount[match[1]]--;
+                    }
+
+                    await updateStatus(patient.patientId, "discharged");
+
+                    card.remove();
+                    document.getElementById("discharged-grid").appendChild(createCard(patient, "discharged"));
+
+                    updateCounts();
+                    updateEmpty();
+                    refreshAllDropdowns();
+                });
+            }
+
+            return card;
+        }
+
+        async function loadPatients() {
+            const loadingMsg = document.getElementById("loading-msg");
+            const errorMsg = document.getElementById("error-msg");
+            loadingMsg.style.display = "block";
+            errorMsg.style.display = "none";
+
+            document.getElementById("waiting-grid").innerHTML = "";
+            document.getElementById("inprogress-grid").innerHTML = "";
+            document.getElementById("discharged-grid").innerHTML = "";
+
+            doctors.forEach(d => doctorCount[d] = 0);
+
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                const patients = data.patients || [];
+
+                loadingMsg.style.display = "none";
+
+                // Restore doctor counts from existing assignments
+                patients.forEach(p => {
+                    if (p.status === "in-progress" && p.staffNote) {
+                        const match = p.staffNote.match(/Assigned to: (.+)/);
+                        if (match && doctorCount[match[1]] !== undefined) {
+                            doctorCount[match[1]]++;
+                        }
+                    }
+                });
+
+                patients.forEach(patient => {
+                    const status = patient.status || "waiting";
+                    const card = createCard(patient, status);
+                    if (status === "waiting") {
+                        document.getElementById("waiting-grid").appendChild(card);
+                    } else if (status === "in-progress") {
+                        document.getElementById("inprogress-grid").appendChild(card);
+                    } else if (status === "discharged") {
+                        document.getElementById("discharged-grid").appendChild(card);
+                    }
+                });
+
+                updateCounts();
+                updateEmpty();
+                refreshAllDropdowns();
+
+            } catch (err) {
+                loadingMsg.style.display = "none";
+                errorMsg.textContent = "Could not connect to server. Make sure app.py is running on http://localhost:8080";
+                errorMsg.style.display = "block";
+                console.error("Load error:", err);
+            }
+        }
+
+        document.getElementById("tab-waiting").addEventListener("click", () => switchTab("waiting"));
+        document.getElementById("tab-inprogress").addEventListener("click", () => switchTab("in-progress"));
+        document.getElementById("tab-discharged").addEventListener("click", () => switchTab("discharged"));
+
+        // Load patients on page load
+        loadPatients();
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadPatients, 30000);
+    </script>
+
+</body>
+</html>

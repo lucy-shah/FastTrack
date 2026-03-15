@@ -182,6 +182,18 @@ class TriageHandler(BaseHTTPRequestHandler):
             except FileNotFoundError:
                 self.send_json({"error": "patient.html not found"}, 404)
             return
+        if self.path == "/staff.html":
+            try:
+                with open("staff.html", "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+            except FileNotFoundError:
+                self.send_json({"error": "staff.html not found"}, 404)
+            return
 
         if self.path.startswith("/api/health"):
             patients = load_patients()

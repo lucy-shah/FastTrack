@@ -43,6 +43,77 @@ def calculate_age(dob_str):
     except Exception:
         return None
 
+# manual triaging function
+def manual_triage(patient: dict) -> dict:
+    """
+    Rule-based triage used when the AI call fails.
+    Mirrors the same urgency tiers and tiebreak logic as the AI prompt.
+    """
+    symptoms  = set(patient.get("symptoms", []))
+    pain      = patient.get("painLevel", 0) or 0
+    conditions = (patient.get("existingConditions") or "").lower()
+    age       = calculate_age(patient.get("dob", ""))
+    sex       = (patient.get("sex") or "").lower()
+ 
+
+    emergent_symptoms = {"chest pain", "shortness of breath", "loss of consciousness",
+                         "seizure", "bleeding", "confusion"}
+    urgent_symptoms   = {"abdominal pain", "allergic reaction", "vision changes",
+                         "palpitations", "difficulty swallowing", "fever"}
+ 
+    if symptoms & emergent_symptoms or pain >= 9:
+        urgency = "EMERGENT"
+    elif symptoms & urgent_symptoms or pain >= 6:
+        urgency = "URGENT"
+    else:
+        urgency = "NON-URGENT"
+ 
+    risky = ["heart disease", "stroke", "cancer", "blood clot", "pregnan"]
+    if any(kw in conditions for kw in risky) and urgency == "NON-URGENT":
+        urgency = "URGENT"
+ 
+    urgency_rank = {"EMERGENT": 1, "URGENT": 2, "NON-URGENT": 3}[urgency]
+ 
+    # Tiebreak score (0-100)
+    score = int(pain * 4)
+ 
+    score += len(symptoms & emergent_symptoms) * 10
+    score += len(symptoms & urgent_symptoms) * 5
+ 
+    if age is not None:
+        if age >= 65 or age < 12:
+            score += 15
+ 
+ 
+    if sex == "female":
+        score += 5
+ 
+    # High-risk conditions
+    score += sum(6 for kw in risky if kw in conditions)
+ 
+    tiebreak = max(0, min(100, score))
+ 
+    # Build reasoning string
+    triggered = []
+    if symptoms & emergent_symptoms:
+        triggered.append(f"critical symptoms ({', '.join(symptoms & emergent_symptoms)})")
+    if pain >= 6:
+        triggered.append(f"pain level {pain}/10")
+    if any(kw in conditions for kw in risky):
+        triggered.append("high-risk existing conditions")
+    reason_text = "; ".join(triggered) if triggered else "mild presentation"
+    reasoning = f"Manual triage ({reason_text})"
+ 
+    print(f"  [Manual] {urgency} (rank {urgency_rank}, tiebreak {tiebreak}) — {reasoning}")
+ 
+    return {
+        "urgency":      urgency,
+        "urgencyRank":  urgency_rank,
+        "tiebreakScore": tiebreak,
+        "reasoning":    reasoning,
+    }
+ 
+
 #  AI Triage 
 
 def ai_triage(patient):
@@ -105,13 +176,9 @@ Respond ONLY with this exact JSON:
         }
 
     except Exception as e:
-        print(f"  [AI] Error: {e} — defaulting to URGENT")
-        return {
-            "urgency": "URGENT",
-            "urgencyRank": 2,
-            "tiebreakScore": 50,
-            "reasoning": "AI triage unavailable; defaulted to URGENT.",
-        }
+        print(f"  [AI] Error: {e} — falling back to manual triage")
+        return manual_triage(patient)
+
 
 def sort_key(patient):
     return (

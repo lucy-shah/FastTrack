@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../../Fast-Track"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "Fast-Track"
+	}
+}
